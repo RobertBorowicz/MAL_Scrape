@@ -238,7 +238,7 @@ class MALAnimeScraper():
 
         return total
 
-scraper = MALAnimeScraper('32951')
+scraper = MALAnimeScraper('1639')
 anime = scraper.scrape_anime()
 anime_as_json = json.dumps(anime)
 print anime_as_json

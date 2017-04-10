@@ -1,26 +1,75 @@
 from bs4 import BeautifulSoup
 import re
+import json
+import requests
+import time
 
+'''
+Currently not doing any error handling
+Will fix before implementing into malstats
+'''
 class MALAnimeScraper():
 
-    def __init__(soup):
-        self.soup = self.soup
+    def __init__(self, animeID):
+        # soup is the backbone for all class methods
+        # this should be an instance of BeautifulSoup()
+        self.soup = None
+        self.url = 'https://myanimelist.net/anime/' + animeID
+        self.update_soup()
 
-    def get_type(soup):
+    def update_soup(self):
+        res = requests.get(self.url)
+        self.soup = BeautifulSoup(res.content, 'html.parser')
+
+    def set_animeID(self, animeID):
+        self.url = 'https://myanimelist.net/anime/' + animeID
+
+    def set_animeID_and_update(self, animeID):
+        self.url = 'https://myanimelist.net/anime/' + animeID
+        self.update_soup()
+
+    def scrape_anime(self):
+        descriptor = {
+            'Type' : self.get_type,
+            'Title' : self.get_title,
+            'Title_JP' : self.get_title_jp,
+            'Title_EN' : self.get_title_en,
+            'Episodes' : self.get_episodes,
+            'Status' : self.get_status,
+            'Premier' : self.get_premier,
+            'Producers' : self.get_producers,
+            'Studios' : self.get_studios,
+            'Source' : self.get_source,
+            'Genres' : self.get_genres,
+            'Duration' : self.get_duration_minutes,
+            'Rating' : self.get_rating,
+            'Score' : self.get_score_as_float,
+            'Members' : self.get_members,
+            'Favorites' : self.get_favorites
+        }
+
+        for key, function in descriptor.items():
+            descriptor[key] = function()
+
+        descriptor['Timestamp'] = time.ctime()
+        
+        return descriptor
+
+    def get_type(self):
         tag = self.soup.find('span', string='Type:')
         anime_type = None
         if tag:
             anime_type = tag.find_next_sibling('a').string
         return anime_type
 
-    def get_title(soup):
+    def get_title(self):
         tag = self.soup.find('span', itemprop='name')
         title = None
         if tag:
             title = tag.string.strip()
         return title
 
-    def get_title_jp(soup):
+    def get_title_jp(self):
         tag = self.soup.find('span', string='Japanese:')
         title = None
         if tag:
@@ -29,7 +78,7 @@ class MALAnimeScraper():
             return title
         return title
 
-    def get_title_en(soup):
+    def get_title_en(self):
         tag = self.soup.find('span', string='English:')
         title = None
         if tag:
@@ -38,7 +87,7 @@ class MALAnimeScraper():
             return title
         return title
 
-    def get_episodes(soup):
+    def get_episodes(self):
         tag = self.soup.find('span', string='Episodes:')
         if tag:
             episodes = tag.next_sibling.encode('utf8')
@@ -49,7 +98,7 @@ class MALAnimeScraper():
                 print "Unable to correctly parse episodes"
         return 0
 
-    def get_status(soup):
+    def get_status(self):
         tag = self.soup.find('span', string='Status:')
         status = None
         if tag:
@@ -58,8 +107,8 @@ class MALAnimeScraper():
             return status
         return status
 
-    def get_premier(soup):
-        tag = soup.find('span', string='Premiered:')
+    def get_premier(self):
+        tag = self.soup.find('span', string='Premiered:')
         prem = None
         if tag:
             next_tag = tag.find_next_sibling('a')
@@ -67,7 +116,7 @@ class MALAnimeScraper():
             prem = (date, season)
         return prem
 
-    def get_producers(soup):
+    def get_producers(self):
         mainTag = self.soup.find('span', string='Producers:')
         siblingTags = mainTag.find_next_siblings('a')
         producers = []
@@ -86,7 +135,7 @@ class MALAnimeScraper():
 
         return producers
 
-    def get_studios(soup):
+    def get_studios(self):
         mainTag = self.soup.find('span', string='Studios:')
         siblingTags = mainTag.find_next_siblings('a')
         studios = []
@@ -105,7 +154,7 @@ class MALAnimeScraper():
 
         return studios
 
-    def get_source(soup):
+    def get_source(self):
         tag = self.soup.find('span', string='Source:')
         source = None
         if tag:
@@ -113,7 +162,7 @@ class MALAnimeScraper():
             source = source.strip()
         return source
 
-    def get_genres(soup):
+    def get_genres(self):
         tags = self.soup(href=re.compile('genre'))
         genres = []
         if not tags:
@@ -123,7 +172,7 @@ class MALAnimeScraper():
                 genres.append(tag.string)
         return genres
 
-    def get_duration_minutes(soup):
+    def get_duration_minutes(self):
         tag = self.soup.find('span', string='Duration:')
         duration = -1
         dur_text = None
@@ -131,10 +180,10 @@ class MALAnimeScraper():
             dur_text = tag.next_sibling.encode('utf8')
             dur_text = dur_text.strip()
             if dur_text != 'Unknown':
-               duration = parse_duration(dur_text)
+               duration = self.__parse_duration(dur_text)
         return duration
 
-    def get_rating(soup):
+    def get_rating(self):
         tag = self.soup.find('span', string='Rating:')
         rating = None
         if tag:
@@ -142,7 +191,7 @@ class MALAnimeScraper():
             rating = rating.strip()
         return rating
 
-    def get_score_as_float(soup):
+    def get_score_as_float(self):
         tag = self.soup.find('span', itemprop='ratingValue')
         score = 0.0
         if tag:
@@ -150,7 +199,7 @@ class MALAnimeScraper():
             score = float('{0:2s}'.format(raw_score))
         return score
 
-    def get_members(soup):
+    def get_members(self):
         tag = self.soup.find('span', string='Members:')
         members = 0
         if tag:
@@ -161,18 +210,18 @@ class MALAnimeScraper():
                 pass
         return members
 
-    def get_favorites(soup):
+    def get_favorites(self):
         tag = self.soup.find('span', string='Favorites:')
         favs = 0
         if tag:
-            favs = tag.next_sibling.replace(',','')
+            fav = tag.next_sibling.replace(',','')
             try:
-                fav = int(fav)
+                favs = int(fav)
             except:
                 pass
-        return fav
+        return favs
 
-    def parse_duration(text):
+    def __parse_duration(self, text):
         pattern = re.compile('([\d]+)\D+(?:(\d+))?')
         m = re.match(pattern, text)
 
@@ -188,3 +237,8 @@ class MALAnimeScraper():
                 total = int(all_groups[0])*60 + int(all_groups[1])
 
         return total
+
+scraper = MALAnimeScraper('32951')
+anime = scraper.scrape_anime()
+anime_as_json = json.dumps(anime)
+print anime_as_json

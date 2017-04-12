@@ -30,21 +30,21 @@ class MALAnimeScraper():
 
     def scrape_anime(self):
         descriptor = {
-            'Type' : self.get_type,
-            'Title' : self.get_title,
-            'Title_JP' : self.get_title_jp,
-            'Title_EN' : self.get_title_en,
-            'Episodes' : self.get_episodes,
-            'Status' : self.get_status,
-            'Premier' : self.get_premier,
+            'Type'      : self.get_type,
+            'Title'     : self.get_title,
+            'Title_JP'  : self.get_title_jp,
+            'Title_EN'  : self.get_title_en,
+            'Episodes'  : self.get_episodes,
+            'Status'    : self.get_status,
+            'Premier'   : self.get_premier,
             'Producers' : self.get_producers,
-            'Studios' : self.get_studios,
-            'Source' : self.get_source,
-            'Genres' : self.get_genres,
-            'Duration' : self.get_duration_minutes,
-            'Rating' : self.get_rating,
-            'Score' : self.get_score_as_float,
-            'Members' : self.get_members,
+            'Studios'   : self.get_studios,
+            'Source'    : self.get_source,
+            'Genres'    : self.get_genres,
+            'Duration'  : self.get_duration_minutes,
+            'Rating'    : self.get_rating,
+            'Score'     : self.get_score_as_float,
+            'Members'   : self.get_members,
             'Favorites' : self.get_favorites
         }
 
@@ -52,7 +52,7 @@ class MALAnimeScraper():
             descriptor[key] = function()
 
         descriptor['Timestamp'] = time.ctime()
-        
+
         return descriptor
 
     def get_type(self):

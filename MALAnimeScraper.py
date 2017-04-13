@@ -3,6 +3,7 @@ import re
 import json
 import requests
 import time
+from collections import defaultdict
 
 '''
 Currently not doing any error handling
@@ -15,6 +16,8 @@ class MALAnimeScraper():
         # this should be an instance of BeautifulSoup()
         self.soup = None
         self.url = 'https://myanimelist.net/anime/' + animeID
+        self.animeID = animeID
+        self.relatedStrings = ['Adaptation:', 'Prequel:', 'Sequel:', 'Other:', 'Spin-off:', 'Alternative version:', 'Side story:', 'Parent story:']
         self.update_soup()
 
     def update_soup(self):
@@ -45,7 +48,8 @@ class MALAnimeScraper():
             'Rating'    : self.get_rating,
             'Score'     : self.get_score_as_float,
             'Members'   : self.get_members,
-            'Favorites' : self.get_favorites
+            'Favorites' : self.get_favorites,
+            'Relations' : self.get_all_relations
         }
 
         for key, function in descriptor.items():
@@ -221,12 +225,39 @@ class MALAnimeScraper():
                 pass
         return favs
 
+    def get_all_relations(self):
+        table = self.soup.find('table', {'class':'anime_detail_related_anime'})
+        data = table.find_all('td')
+        relations = {}
+        animePattern = re.compile('/anime/([0-9]+)')
+        mangaPattern = re.compile('/manga/([0-9]+)')
+        currKey = ''
+        for d in data:
+            try:
+                if d.string and d.string in self.relatedStrings:
+                    currKey = d.string.replace(':', '')
+                    relations[currKey] = []
+                else:
+                    if currKey == "Adaptation":
+                        p = mangaPattern
+                    else:
+                        p = animePattern
+                    for link in d.find_all('a'):
+                        m = re.match(p, link['href'])
+                        relatedID = int(m.group(1))
+                        relations[currKey].append(relatedID)
+
+            except:
+                # Just ignore errors for now
+                pass
+        return relations
+
+
     def __parse_duration(self, text):
         pattern = re.compile('([\d]+)\D+(?:(\d+))?')
         m = re.match(pattern, text)
 
         total = 0
-        print m.groups()
         all_groups = m.groups()
         if len(all_groups) != 2:
             return 0
@@ -238,7 +269,7 @@ class MALAnimeScraper():
 
         return total
 
-scraper = MALAnimeScraper('1639')
+scraper = MALAnimeScraper('9756')
 anime = scraper.scrape_anime()
 anime_as_json = json.dumps(anime)
 print anime_as_json

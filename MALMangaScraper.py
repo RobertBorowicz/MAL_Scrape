@@ -15,6 +15,8 @@ class MALMangaScraper():
         # this should be an instance of BeautifulSoup()
         self.soup = None
         self.url = 'https://myanimelist.net/manga/' + mangaID
+        self.mangaID = mangaID
+        self.relatedStrings = ['Adaptation:', 'Prequel:', 'Sequel:', 'Other:', 'Spin-off:', 'Alternative version:', 'Side story:', 'Parent story:']
         self.update_soup()
 
     def update_soup(self):
@@ -36,14 +38,14 @@ class MALMangaScraper():
             'Title_EN'    : self.get_title_en,
             'Chapters'    : self.get_chapters,
             'Status'      : self.get_status,
-            'Volumes'     : self.get_premier,
+            'Volumes'     : self.get_volumes,
             'Authors'     : self.get_authors,
             'Serial'      : self.get_serialization,
             'Genres'      : self.get_genres,
             'Score'       : self.get_score_as_float,
             'Members'     : self.get_members,
             'Favorites'   : self.get_favorites,
-            'Adaptations' : self.get_adaptations
+            'Relations'   : self.get_all_relations
         }
 
         for key, function in descriptor.items():
@@ -194,104 +196,36 @@ class MALMangaScraper():
                 pass
         return favs
 
-    # This is a fragile method. I should find a better way to do this
-    def get_adaptations(self):
-        tag = self.soup.find('td', string="Adaptation:")
-        pattern = re.compile('/anime/([0-9]+)')
-        adapts = []
-        if tag:
-            sibling = tag.find_parent('tr').find_all('a')
-            if not sibling:
-                print 'No adaptations found'
-                return []
-            for link in sibling:
-                m = re.match(pattern, link['href'])
-                try:
-                    anime_id = int(m.group(1))
-                    adapts.append((anime_id, link.string))
-                except:
-                    print 'Unable to parse anime ID'
-        return adapts
+    def get_all_relations(self):
+        table = self.soup.find('table', {'class':'anime_detail_related_anime'})
+        data = table.find_all('td')
+        relations = {}
+        animePattern = re.compile('/anime/([0-9]+)')
+        mangaPattern = re.compile('/manga/([0-9]+)')
+        currKey = ''
+        for d in data:
+            try:
+                if d.string and d.string in self.relatedStrings:
+                    currKey = d.string.replace(':', '')
+                    relations[currKey] = []
+                else:
+                    if currKey == "Adaptation":
+                        p = animePattern
+                    else:
+                        p = mangaPattern
+                    for link in d.find_all('a'):
+                        m = re.match(p, link['href'])
+                        relatedID = int(m.group(1))
+                        relations[currKey].append(relatedID)
 
-    def get_prequel(self):
-        tag = self.soup.find('td', string="Prequel:")
-        pattern = re.compile('/manga/([0-9]+)')
-        prequel = []
-        if tag:
-            parent = tag.find_parent('tr')
-            sibling = parent('a', href=pattern)
-            if not sibling:
-                print 'No prequel found'
-                return []
-            for link in sibling:
-                m = re.match(pattern, link['href'])
-                try:
-                    manga_id = int(m.group(1))
-                    prequel.append((manga_id, link.string))
-                except:
-                    print 'Unable to parse manga ID'
-        return prequel
-
-    def get_spinoffs(self):
-        tag = self.soup.find('td', string="Spin-off:")
-        pattern = re.compile('/manga/([0-9]+)')
-        prequel = []
-        if tag:
-            parent = tag.find_parent('tr')
-            sibling = parent('a', href=pattern)
-            if not sibling:
-                print 'No prequel found'
-                return []
-            for link in sibling:
-                m = re.match(pattern, link['href'])
-                try:
-                    manga_id = int(m.group(1))
-                    prequel.append((manga_id, link.string))
-                except:
-                    print 'Unable to parse manga ID'
-        return prequel
-
-    def get_others(self):
-        tag = self.soup.find('td', string="Other:")
-        pattern = re.compile('/manga/([0-9]+)')
-        prequel = []
-        if tag:
-            parent = tag.find_parent('tr')
-            sibling = parent('a', href=pattern)
-            if not sibling:
-                print 'No prequel found'
-                return []
-            for link in sibling:
-                m = re.match(pattern, link['href'])
-                try:
-                    manga_id = int(m.group(1))
-                    prequel.append((manga_id, link.string))
-                except:
-                    print 'Unable to parse manga ID'
-        return prequel
-
-    def get_side_stories(self):
-        tag = self.soup.find('td', string="Side story:")
-        pattern = re.compile('/manga/([0-9]+)')
-        prequel = []
-        if tag:
-            parent = tag.find_parent('tr')
-            print len(list(parent.descendants))
-            sibling = parent('a', href=pattern)
-            if not sibling:
-                print 'No prequel found'
-                return []
-            for link in sibling:
-                m = re.match(pattern, link['href'])
-                try:
-                    manga_id = int(m.group(1))
-                    prequel.append((manga_id, link.string))
-                except:
-                    print 'Unable to parse manga ID'
-        return prequel
+            except:
+                print 'Error'
+                pass
+            # print d.find_all('a')
+        return relations
 
 
 scraper = MALMangaScraper('598')
-# manga = scraper.scrape_manga()
-# manga_as_json = json.dumps(manga)
-# print manga_as_json
+manga = scraper.scrape_manga()
+manga_as_json = json.dumps(manga)
+print manga_as_json
